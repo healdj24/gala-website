@@ -187,17 +187,18 @@ export default function Home() {
           animation: none;
           filter: blur(0);
           opacity: 1;
+          transform: translate(-50%, -50%) scale(1.2);
           transition: left 0.7s ease, top 0.7s ease, transform 0.7s ease, filter 0.5s ease;
         }
         .the-gala-docked {
           left: 64px;
           top: 64px;
-          transform: translate(0, 0);
+          transform: translate(0, 0) scale(1);
         }
         @keyframes the-gala-streak {
           0% {
             opacity: 0;
-            transform: translate(-50%, -50%) scale(0.65) rotate(0deg);
+            transform: translate(-50%, -50%) scale(1.95) rotate(0deg);
             filter: blur(24px);
           }
           35% {
@@ -208,7 +209,7 @@ export default function Home() {
           }
           100% {
             opacity: 1;
-            transform: translate(-50%, -50%) scale(1.12) rotate(540deg);
+            transform: translate(-50%, -50%) scale(1.2) rotate(540deg);
             filter: blur(8px);
           }
         }
