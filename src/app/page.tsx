@@ -1,6 +1,7 @@
 "use client";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
+import { Cinzel } from "next/font/google";
 
 export default function Home() {
   const sectionRef = useRef<HTMLDivElement | null>(null);
@@ -42,18 +43,19 @@ export default function Home() {
   // WORD REVEAL: thresholds at 0, 0.25, 0.5, 0.75 of the section progress
   const thresholds = [0, 0.25, 0.5, 0.75];
   const words = ["Welcome", "to", "the", "Gala"];
+  // Even spacing including margins: positions at i/(N+1) along the diagonal NW→SE
   const positions = [
-    { x: "10%", y: "10%" },
+    { x: "20%", y: "20%" }, // edge margin equals internal spacing
     { x: "40%", y: "40%" },
     { x: "60%", y: "60%" },
-    { x: "90%", y: "90%" }
+    { x: "80%", y: "80%" }
   ];
   // Soft curtain bottom edge via CSS mask
   const maskStyle: React.CSSProperties = {
     WebkitMaskImage:
-      "linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 82%, rgba(0,0,0,0) 100%)",
+      "linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 88%, rgba(0,0,0,0) 100%)",
     maskImage:
-      "linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 82%, rgba(0,0,0,0) 100%)"
+      "linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 88%, rgba(0,0,0,0) 100%)"
   };
 
   return (
@@ -137,27 +139,39 @@ export default function Home() {
   );
 }
 
+const cinzel = Cinzel({
+  subsets: ["latin"],
+  weight: ["700", "800", "900"]
+});
+
 function GoldWord({ text }: { text: string }) {
   // Playful metallic yellow via layered gradients clipped to text
   return (
     <span
-      className="font-semibold"
+      className={`${cinzel.className} font-extrabold`}
       style={{
-        fontFamily: "ui-rounded, system-ui, Helvetica, Arial, sans-serif",
-        fontSize: "clamp(28px, 6vw, 84px)",
-        lineHeight: 1.05,
-        letterSpacing: "0.5px",
+        fontSize: "clamp(36px, 7vw, 96px)",
+        lineHeight: 1.02,
+        letterSpacing: "0.6px",
         color: "transparent",
         backgroundImage: [
-          "linear-gradient(180deg, #FFE36A 0%, #FFD34A 35%, #FFB200 65%, #E08E00 100%)",
-          "radial-gradient(120% 120% at 20% 10%, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0) 40%)",
-          "radial-gradient(140% 120% at 80% 90%, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0) 60%)"
+          // gold body
+          "linear-gradient(180deg, #FFE770 0%, #FFD54F 30%, #FFB300 62%, #C88200 100%)",
+          // top-left specular highlight
+          "radial-gradient(120% 120% at 20% 8%, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.3) 10%, rgba(255,255,255,0) 38%)",
+          // bottom-right reflected shadow
+          "radial-gradient(120% 120% at 80% 90%, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0) 55%)"
         ].join(", "),
         WebkitBackgroundClip: "text",
         backgroundClip: "text",
-        // soft inner shadow feel using text-shadow layers
-        textShadow:
-          "0 1px 0 rgba(0,0,0,0.2), 0 3px 8px rgba(0,0,0,0.35), 0 0 18px rgba(255,235,130,0.25)"
+        // subtle stroke and bevel via shadows (3D feel, no hard edges)
+        WebkitTextStroke: "1px rgba(140,90,0,0.35)",
+        textShadow: [
+          "0 1px 0 rgba(255,255,255,0.45)",        // top bevel highlight
+          "0 2px 0 rgba(255,225,120,0.35)",       // soft rim
+          "0 4px 6px rgba(0,0,0,0.35)",           // drop shadow
+          "0 8px 18px rgba(0,0,0,0.25)"           // global glow
+        ].join(", ")
       }}
     >
       {text}
