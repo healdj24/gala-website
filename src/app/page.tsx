@@ -5,9 +5,11 @@ import { Cinzel } from "next/font/google";
 
 export default function Home() {
   const sectionRef = useRef<HTMLDivElement | null>(null);
+  const beigeRef = useRef<HTMLElement | null>(null);
   const [vh, setVh] = useState(0);
   // Scroll progress within curtain section (0..1)
   const progressRef = useRef(0);
+  const beigeFadeRef = useRef(0);
   const [, force] = useState(0); // re-render trigger
 
   useEffect(() => {
@@ -29,6 +31,16 @@ export default function Home() {
     };
     const onScrollOrResize = () => {
       progressRef.current = calcProgress();
+      // Compute beige fade based on beige section entering viewport
+      if (beigeRef.current) {
+        const br = beigeRef.current.getBoundingClientRect();
+        const viewportH = window.innerHeight;
+        // Start fade when beige top crosses 85% of viewport, complete by 55%
+        const start = viewportH * 0.85;
+        const end = viewportH * 0.55;
+        const raw = 1 - (br.top - end) / (start - end);
+        beigeFadeRef.current = Math.max(0, Math.min(1, raw));
+      }
       force((v) => v + 1);
     };
     onScrollOrResize();
@@ -93,47 +105,71 @@ export default function Home() {
             />
           </div>
 
-          {/* Word overlay along NW→SE diagonal */}
-          <div className="pointer-events-none absolute inset-0 z-30">
-            {words.map((word, i) => {
-              const start = thresholds[i];
-              // Fade when progress passes the threshold (with a small ramp)
-              const p = progressRef.current;
-              const ramp = 0.12;
-              const t = Math.max(0, Math.min(1, (p - start) / ramp));
-              const scale = 0.92 + 0.08 * t;
-              const pos = positions[i];
-              return (
-                <div
-                  key={word}
-                  className="absolute select-none"
-                  style={{
-                    left: pos.x,
-                    top: pos.y,
-                    transform: `translate(-50%, -50%) scale(${scale})`,
-                    opacity: t,
-                    filter: "drop-shadow(0 10px 16px rgba(0,0,0,0.35))"
-                  }}
-                >
-                  <GoldWord text={word} />
-                </div>
-              );
-            })}
+          {/* Centered \"Welcome\" then \"to\" on the curtain, sequential fade-in */}
+          <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center">
+            <div className="text-center space-y-3">
+              {(() => {
+                const p = progressRef.current;
+                const ramp = 0.12;
+                const tWelcome = Math.max(0, Math.min(1, (p - 0.0) / ramp));
+                const tTo = Math.max(0, Math.min(1, (p - 0.12) / ramp));
+                const scaleW = 0.92 + 0.08 * tWelcome;
+                const scaleT = 0.92 + 0.08 * tTo;
+                return (
+                  <>
+                    <div
+                      className="select-none"
+                      style={{
+                        opacity: tWelcome,
+                        transform: `scale(${scaleW})`,
+                        filter: "drop-shadow(0 10px 16px rgba(0,0,0,0.35))"
+                      }}
+                    >
+                      <GoldWord text="Welcome" />
+                    </div>
+                    <div
+                      className="select-none"
+                      style={{
+                        opacity: tTo,
+                        transform: `scale(${scaleT})`,
+                        filter: "drop-shadow(0 10px 16px rgba(0,0,0,0.35))"
+                      }}
+                    >
+                      <GoldWord text="to" />
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
           </div>
         </div>
       </section>
 
       {/* Revealed content immediately under the curtain */}
       <section
+        ref={beigeRef}
         className="min-h-screen w-full flex items-center justify-center p-8"
         style={{
           background:
             "linear-gradient(180deg, #efe3c9 0%, #ead7b5 60%, #e1cba8 100%)"
         }}
       >
-        <p className="text-lg sm:text-2xl tracking-wide text-[#1e1a15]">
-          the quick brown fox jumped over the lazy dog.
-        </p>
+        <div className="text-center space-y-6">
+          {/* 'The Gala' fades in as the beige enters view, in crimson variant */}
+          <div
+            className="select-none"
+            style={{
+              opacity: beigeFadeRef.current,
+              transform: `scale(${0.96 + 0.04 * beigeFadeRef.current})`,
+              filter: "drop-shadow(0 10px 16px rgba(0,0,0,0.25))"
+            }}
+          >
+            <CrimsonWord text="The Gala" />
+          </div>
+          <p className="text-lg sm:text-2xl tracking-wide text-[#1e1a15]">
+            the quick brown fox jumped over the lazy dog.
+          </p>
+        </div>
       </section>
     </main>
   );
@@ -171,6 +207,38 @@ function GoldWord({ text }: { text: string }) {
           "0 2px 0 rgba(255,225,120,0.35)",       // soft rim
           "0 4px 6px rgba(0,0,0,0.35)",           // drop shadow
           "0 8px 18px rgba(0,0,0,0.25)"           // global glow
+        ].join(", ")
+      }}
+    >
+      {text}
+    </span>
+  );
+}
+
+function CrimsonWord({ text }: { text: string }) {
+  return (
+    <span
+      className={`${cinzel.className} font-extrabold`}
+      style={{
+        fontSize: "clamp(40px, 8vw, 112px)",
+        lineHeight: 1.02,
+        letterSpacing: "0.8px",
+        color: "transparent",
+        backgroundImage: [
+          // curtain crimson
+          "linear-gradient(180deg, #ff3b3b 0%, #d11212 35%, #9b0c0c 65%, #5a0000 100%)",
+          // subtle specular highlight
+          "radial-gradient(120% 120% at 18% 10%, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0) 38%)",
+          // soft corner shadow
+          "radial-gradient(120% 120% at 82% 90%, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0) 55%)"
+        ].join(", "),
+        WebkitBackgroundClip: "text",
+        backgroundClip: "text",
+        WebkitTextStroke: "1px rgba(80,0,0,0.35)",
+        textShadow: [
+          "0 1px 0 rgba(255,180,180,0.35)",
+          "0 2px 0 rgba(180,0,0,0.25)",
+          "0 6px 10px rgba(0,0,0,0.35)"
         ].join(", ")
       }}
     >
