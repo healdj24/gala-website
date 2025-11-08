@@ -1,19 +1,22 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 "use client";
 import dynamic from "next/dynamic";
+import { Playfair_Display } from "next/font/google";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const Swirl = dynamic(
   () => import("@paper-design/shaders-react").then((m) => m.Swirl),
   { ssr: false }
 );
+const playfair = Playfair_Display({ subsets: ["latin"], weight: ["700", "800", "900"] });
 
 export default function Home() {
   const [viewport, setViewport] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
   const [speed, setSpeed] = useState<number>(0.4);
   const [isSpinning, setIsSpinning] = useState(false);
   const [fade, setFade] = useState(0); // 0 transparent, 1 white
-  const [showTitle, setShowTitle] = useState(false);
+  const [streakVisible, setStreakVisible] = useState(false);
+  const [streakSolid, setStreakSolid] = useState(false);
   const [dockTitle, setDockTitle] = useState(false);
   const prefersReducedMotion = useRef(false);
   const rafRef = useRef<number | null>(null);
@@ -57,6 +60,9 @@ export default function Home() {
     setIsSpinning(false);
     setSpeed(0.4);
     setFade(0);
+    setStreakVisible(false);
+    setStreakSolid(false);
+    setDockTitle(false);
   }, []);
 
   useEffect(() => {
@@ -76,11 +82,13 @@ export default function Home() {
     if (isSpinning) return;
     if (prefersReducedMotion.current) {
       setFade(1);
-      setTimeout(() => setShowTitle(true), 150);
-      setTimeout(() => setDockTitle(true), 1200);
+      setStreakVisible(true);
+      setStreakSolid(true);
+      setDockTitle(true);
       return;
     }
     setIsSpinning(true);
+    setStreakVisible(true);
     const start = performance.now();
     const duration = 1200; // ms
     const startSpeed = speed;
@@ -97,7 +105,7 @@ export default function Home() {
         // brief hold, then fade to white and show on-page title
         setTimeout(() => {
           setFade(1);
-          setTimeout(() => setShowTitle(true), 150);
+          setTimeout(() => setStreakSolid(true), 200);
           setTimeout(() => setDockTitle(true), 1200);
         }, 150);
         setIsSpinning(false);
@@ -133,30 +141,72 @@ export default function Home() {
         style={{ opacity: fade }}
       />
 
-      {/* On-page title that fades in after white, then docks to top-left */}
-      <div
-        className={[
-          "pointer-events-none absolute z-10 select-none transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]",
-          showTitle ? "opacity-100" : "opacity-0",
-          dockTitle
-            ? "left-10 top-10 translate-x-0 translate-y-0"
-            : "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2",
-        ].join(" ")}
-        aria-hidden="true"
-      >
-        <h1
-          className="font-extrabold"
-          style={{
-            fontFamily: "ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif",
-            fontSize: "clamp(40px, 8vw, 112px)",
-            lineHeight: 1.02,
-            letterSpacing: "0.6px",
-            color: "#000",
-          }}
+      {/* Swirl-emerging title */}
+      {streakVisible && (
+        <div
+          aria-hidden="true"
+          className={[
+            "the-gala-text",
+            !streakSolid ? "the-gala-streak" : dockTitle ? "the-gala-docked" : "the-gala-solid",
+          ].join(" ")}
         >
           The Gala
-        </h1>
-      </div>
+        </div>
+      )}
+
+      <style jsx global>{`
+        .the-gala-text {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          z-index: 30;
+          font-family: ${playfair.style.fontFamily};
+          font-weight: 800;
+          font-size: clamp(40px, 8vw, 112px);
+          letter-spacing: 0.6px;
+          color: transparent;
+          background-image: linear-gradient(90deg, #ffd1d1 0%, #ff8a8a 50%, #660000 100%);
+          -webkit-background-clip: text;
+          background-clip: text;
+          text-shadow: 0 0 22px rgba(255, 209, 209, 0.35);
+          pointer-events: none;
+        }
+        .the-gala-streak {
+          animation: the-gala-streak 1.2s cubic-bezier(0.22, 0.65, 0.28, 1) forwards;
+          filter: blur(18px);
+          opacity: 0;
+        }
+        .the-gala-solid {
+          animation: none;
+          filter: blur(0);
+          opacity: 1;
+          transition: left 0.7s ease, top 0.7s ease, transform 0.7s ease, filter 0.5s ease;
+        }
+        .the-gala-docked {
+          left: 64px;
+          top: 64px;
+          transform: translate(0, 0);
+        }
+        @keyframes the-gala-streak {
+          0% {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.65) rotate(0deg);
+            filter: blur(24px);
+          }
+          35% {
+            opacity: 0.35;
+          }
+          60% {
+            opacity: 0.9;
+          }
+          100% {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1.12) rotate(540deg);
+            filter: blur(8px);
+          }
+        }
+      `}</style>
     </div>
   );
 }
