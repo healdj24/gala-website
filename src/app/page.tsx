@@ -1,12 +1,22 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+
+const Swirl = dynamic(
+  () => import("@paper-design/shaders-react").then((m) => m.Swirl),
+  { ssr: false }
+);
 
 export default function Home() {
   const router = useRouter();
-  const [isAnimating, setIsAnimating] = useState(false);
+  const [viewport, setViewport] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
+  const [speed, setSpeed] = useState<number>(0.4);
+  const [isSpinning, setIsSpinning] = useState(false);
   const [fade, setFade] = useState(0); // 0 transparent, 1 white
   const prefersReducedMotion = useRef(false);
+  const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
     const mm = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -16,77 +26,98 @@ export default function Home() {
     return () => mm.removeEventListener?.("change", onChange);
   }, []);
 
-  const cancel = useCallback(() => {
-    setIsAnimating(false);
+  useEffect(() => {
+    const update = () => setViewport({ w: window.innerWidth, h: window.innerHeight });
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
+  const params = useMemo(
+    () => ({
+      width: Math.max(1, viewport.w),
+      height: Math.max(1, viewport.h),
+      colors: ["#ffd1d1", "#ff8a8a", "#660000"],
+      colorBack: "#330000",
+      bandCount: 4,
+      twist: 0.1,
+      center: 0.2,
+      proportion: 0.5,
+      softness: 0,
+      noise: 0.2,
+      noiseFrequency: 0.4,
+      speed,
+    }),
+    [viewport, speed]
+  );
+
+  const cancelSpin = useCallback(() => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = null;
+    setIsSpinning(false);
+    setSpeed(0.4);
     setFade(0);
   }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.key === "Enter" || e.key === " ") && !isAnimating) handleEnter();
-      if (e.key === "Escape" && isAnimating) cancel();
+      if ((e.key === "Enter" || e.key === " ") && !isSpinning) {
+        void handleEnter();
+      }
+      if (e.key === "Escape" && isSpinning) {
+        cancelSpin();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [isAnimating, cancel]);
+  }, [isSpinning, cancelSpin]);
 
-  const handleEnter = useCallback(() => {
-    if (isAnimating) return;
+  const handleEnter = useCallback(async () => {
+    if (isSpinning) return;
     if (prefersReducedMotion.current) {
       setFade(1);
       setTimeout(() => router.push("/blank"), 200);
       return;
     }
-    setIsAnimating(true);
-    // Curtains slide duration ~700ms, then fade + navigate
-    setTimeout(() => {
-      setFade(1);
-      setTimeout(() => router.push("/blank"), 250);
-    }, 700);
-  }, [isAnimating, router]);
+    setIsSpinning(true);
+    const start = performance.now();
+    const duration = 1200; // ms
+    const startSpeed = speed;
+    const targetSpeed = 8.0; // fast
+    const ease = (t: number) => 1 - Math.pow(1 - t, 3); // easeOutCubic
+
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / duration);
+      const s = startSpeed + (targetSpeed - startSpeed) * ease(t);
+      setSpeed(s);
+      if (t < 1) {
+        rafRef.current = requestAnimationFrame(tick);
+      } else {
+        // brief hold, then fade and navigate
+        setTimeout(() => {
+          setFade(1);
+          setTimeout(() => router.push("/blank"), 250);
+        }, 150);
+        setIsSpinning(false);
+        rafRef.current = null;
+      }
+    };
+    rafRef.current = requestAnimationFrame(tick);
+  }, [router, speed, isSpinning]);
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden bg-[#2b0000]">
-      {/* Subtle vignette to add depth */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(60% 50% at 50% 50%, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0) 55%)",
-        }}
-      />
-
-      {/* Left curtain */}
-      <div
-        className={[
-          "absolute inset-y-0 left-0 w-[60vw] max-w-[800px]",
-          "bg-[radial-gradient(120%_120%_at_100%_50%,rgba(255,255,255,0.18)_0%,rgba(255,255,255,0)_45%),linear-gradient(180deg,#7a0a0a,#2a0000)]",
-          "shadow-[0_0_80px_rgba(102,0,0,0.55)]",
-          "transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]",
-          isAnimating ? "-translate-x-[110%]" : "translate-x-0",
-        ].join(" ")}
-        style={{ clipPath: "ellipse(90% 70% at 100% 50%)" }}
-      />
-
-      {/* Right curtain */}
-      <div
-        className={[
-          "absolute inset-y-0 right-0 w-[60vw] max-w-[800px]",
-          "bg-[radial-gradient(120%_120%_at_0%_50%,rgba(255,255,255,0.18)_0%,rgba(255,255,255,0)_45%),linear-gradient(180deg,#7a0a0a,#2a0000)]",
-          "shadow-[0_0_80px_rgba(102,0,0,0.55)]",
-          "transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]",
-          isAnimating ? "translate-x-[110%]" : "translate-x-0",
-        ].join(" ")}
-        style={{ clipPath: "ellipse(90% 70% at 0% 50%)" }}
-      />
+    <div className="relative min-h-screen w-full overflow-hidden">
+      {/* Swirl full-viewport */}
+      <div className="absolute inset-0">
+        <Swirl {...params} />
+      </div>
 
       {/* Centered Enter button */}
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
         <button
           type="button"
           aria-label="Enter"
-          onClick={handleEnter}
+          onClick={() => handleEnter()}
           className="pointer-events-auto select-none rounded-full bg-white/90 px-8 py-3 text-lg font-medium text-black shadow-xl ring-1 ring-black/10 transition hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
         >
           Enter
