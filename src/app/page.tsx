@@ -96,36 +96,47 @@ export default function Home() {
             className="absolute inset-0"
             style={{
               backgroundImage: [
-                // subtle paper fibers
-                "repeating-linear-gradient(0deg, rgba(0,0,0,0.03) 0px, rgba(0,0,0,0.03) 1px, rgba(0,0,0,0) 2px, rgba(0,0,0,0) 4px)",
-                // vertical streaks/scratches
-                "repeating-linear-gradient(90deg, rgba(0,0,0,0.025) 0px, rgba(0,0,0,0.025) 1px, rgba(0,0,0,0) 3px, rgba(0,0,0,0) 7px)",
-                // discoloration blobs
-                "radial-gradient(600px 400px at 18% 22%, rgba(80,50,20,0.08), rgba(0,0,0,0) 60%)",
-                "radial-gradient(700px 450px at 78% 30%, rgba(70,45,15,0.06), rgba(0,0,0,0) 60%)",
-                "radial-gradient(500px 350px at 40% 75%, rgba(60,40,15,0.05), rgba(0,0,0,0) 60%)",
-                // parchment base
-                "linear-gradient(180deg, #efe5cf 0%, #eadcbe 60%, #e1d3b3 100%)",
+                // base parchment tone
+                "linear-gradient(180deg, #efe3c9 0%, #e9d7b8 60%, #dfccad 100%)",
+                // wide uneven stains
+                "radial-gradient(800px 520px at 16% 22%, rgba(78,52,23,0.10), rgba(0,0,0,0) 62%)",
+                "radial-gradient(900px 600px at 82% 34%, rgba(66,44,18,0.08), rgba(0,0,0,0) 64%)",
+                "radial-gradient(640px 420px at 44% 78%, rgba(60,40,15,0.07), rgba(0,0,0,0) 60%)",
+                // subtle vertical streaks (offset to avoid symmetry)
+                "repeating-linear-gradient(92deg, rgba(0,0,0,0.03) 0px, rgba(0,0,0,0.03) 1px, rgba(0,0,0,0) 4px, rgba(0,0,0,0) 9px)",
+                // fine fibers (slightly rotated)
+                "repeating-linear-gradient(1.5deg, rgba(0,0,0,0.02) 0px, rgba(0,0,0,0.02) 1px, rgba(0,0,0,0) 3px, rgba(0,0,0,0) 6px)"
               ].join(", "),
+              backgroundPosition:
+                "0 0, 10% 8%, 80% 12%, 44% 78%, 0 0, 0 0",
+              backgroundSize:
+                "auto, auto, auto, auto, 120% 100%, 100% 100%",
               boxShadow:
-                "inset 0 0 160px rgba(0,0,0,0.22), inset 0 0 24px rgba(0,0,0,0.12)",
+                "inset 0 0 180px rgba(0,0,0,0.24), inset 0 0 28px rgba(0,0,0,0.12)"
             }}
           />
-          {/* SVG noise overlay for grain */}
+          {/* Dual SVG noise overlays with slight rotation/scale to break symmetry */}
           <svg
-            className="pointer-events-none absolute inset-0 opacity-15 mix-blend-multiply"
+            className="pointer-events-none absolute inset-0 opacity-20 mix-blend-multiply"
             xmlns="http://www.w3.org/2000/svg"
+            style={{ transform: "rotate(0.6deg) scale(1.02)" }}
           >
-            <filter id="noiseFilter">
-              <feTurbulence
-                type="fractalNoise"
-                baseFrequency="0.9"
-                numOctaves="4"
-                stitchTiles="stitch"
-              />
+            <filter id="noiseA">
+              <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="4" stitchTiles="stitch" />
               <feColorMatrix type="saturate" values="0" />
             </filter>
-            <rect width="100%" height="100%" filter="url(#noiseFilter)" />
+            <rect width="100%" height="100%" filter="url(#noiseA)" />
+          </svg>
+          <svg
+            className="pointer-events-none absolute inset-0 opacity-10 mix-blend-multiply"
+            xmlns="http://www.w3.org/2000/svg"
+            style={{ transform: "rotate(-0.4deg) scale(1.03)" }}
+          >
+            <filter id="noiseB">
+              <feTurbulence type="fractalNoise" baseFrequency="2.2" numOctaves="2" stitchTiles="stitch" />
+              <feColorMatrix type="saturate" values="0" />
+            </filter>
+            <rect width="100%" height="100%" filter="url(#noiseB)" />
           </svg>
 
           {/* Curtain image that translates up with scroll */}
@@ -133,21 +144,21 @@ export default function Home() {
             className="absolute inset-0 will-change-transform"
             style={{ transform: `translateY(${curtainOffsetY}px)` }}
           >
-            <div className="absolute inset-0">
+            <div className="absolute inset-0 z-10">
               <Image
                 src="/curtainjeep.jpeg"
                 alt="Red velvet stage curtain"
                 fill
                 priority
                 sizes="100vw"
-                className="object-cover"
+                className="object-cover z-10"
               />
             </div>
-            {/* Fallback color/texture if the image isn't present yet */}
-            <div className="absolute inset-0 bg-gradient-to-b from-[#9d0b0b] via-[#7a0a0a] to-[#2a0000]" />
+            {/* Fallback gradient (z-0) only visible while image loads */}
+            <div className="absolute inset-0 z-0 bg-gradient-to-b from-[#9d0b0b] via-[#7a0a0a] to-[#2a0000]" />
             {/* Bottom edge shadow to add weight while lifting */}
             <div
-              className="absolute bottom-0 left-0 right-0 h-32 pointer-events-none"
+              className="absolute bottom-0 left-0 right-0 h-32 pointer-events-none z-20"
               style={{
                 background:
                   "linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.35) 100%)",
