@@ -125,7 +125,7 @@ export default function Home() {
                         filter: "drop-shadow(0 10px 16px rgba(0,0,0,0.35))"
                       }}
                     >
-                      <GoldWord text="Welcome" />
+                      <ChromeGoldWord text="Welcome" />
                     </div>
                     <div
                       className="select-none"
@@ -135,7 +135,7 @@ export default function Home() {
                         filter: "drop-shadow(0 10px 16px rgba(0,0,0,0.35))"
                       }}
                     >
-                      <GoldWord text="to" />
+                      <ChromeGoldWord text="to" />
                     </div>
                   </>
                 );
@@ -244,5 +244,73 @@ function CrimsonWord({ text }: { text: string }) {
     >
       {text}
     </span>
+  );
+}
+
+function ChromeGoldWord({ text, size = "clamp(44px,8vw,120px)" }: { text: string; size?: string }) {
+  // Serif chrome-gold using SVG gradients + specular lighting, kept smooth and reflective
+  return (
+    <svg
+      viewBox="0 0 1000 220"
+      width="100%"
+      style={{ display: "block" }}
+      aria-hidden="true"
+      preserveAspectRatio="xMidYMid meet"
+    >
+      <defs>
+        <linearGradient id="goldFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#FFF4B4" />
+          <stop offset="28%" stopColor="#FFD451" />
+          <stop offset="58%" stopColor="#F1B10A" />
+          <stop offset="78%" stopColor="#B87806" />
+          <stop offset="100%" stopColor="#5A3A00" />
+        </linearGradient>
+        <linearGradient id="goldStroke" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#A46A00" />
+          <stop offset="100%" stopColor="#3A1F00" />
+        </linearGradient>
+        <filter id="goldChrome" x="-30%" y="-50%" width="160%" height="220%">
+          <feGaussianBlur in="SourceAlpha" stdDeviation="0.6" result="blur" />
+          <feSpecularLighting
+            in="blur"
+            surfaceScale="4"
+            specularConstant="1.05"
+            specularExponent="28"
+            lightingColor="#ffffff"
+            result="spec"
+          >
+            <fePointLight x="-5000" y="-12000" z="20000" />
+          </feSpecularLighting>
+          <feComposite in="spec" in2="SourceAlpha" operator="in" result="specCut" />
+          <feComposite in="SourceGraphic" in2="specCut" operator="arithmetic" k2="1" k3="1" />
+        </filter>
+        <filter id="glow">
+          <feGaussianBlur stdDeviation="2.2" result="g" />
+          <feMerge>
+            <feMergeNode in="g" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+      <text
+        x="50%"
+        y="60%"
+        textAnchor="middle"
+        dominantBaseline="middle"
+        filter="url(#goldChrome)"
+        fill="url(#goldFill)"
+        stroke="url(#goldStroke)"
+        strokeWidth="1.5"
+        className={cinzel.className}
+        style={{ fontSize: size, letterSpacing: "0.04em", paintOrder: "stroke" }}
+      >
+        {text}
+      </text>
+      <g fill="#ffffff" opacity="0.85" filter="url(#glow)">
+        <path d="M510 40 l8 22 22 8 -22 8 -8 22 -8 -22 -22 -8 22 -8z" />
+        <path d="M760 120 l6 18 18 6 -18 6 -6 18 -6 -18 -18 -6 18 -6z" opacity="0.65" />
+        <path d="M280 150 l5 14 14 5 -14 5 -5 14 -5 -14 -14 -5 14 -5z" opacity="0.5" />
+      </g>
+    </svg>
   );
 }
