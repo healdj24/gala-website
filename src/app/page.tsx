@@ -5,10 +5,8 @@ import { useEffect, useRef, useState } from "react";
 export default function Home() {
   const sectionRef = useRef<HTMLDivElement | null>(null);
   const [vh, setVh] = useState(0);
-  // Scroll target vs. smoothed (inertial) progress
-  const targetProgressRef = useRef(0);
-  const smoothProgressRef = useRef(0);
-  const rafRef = useRef<number | null>(null);
+  // Scroll progress within curtain section (0..1)
+  const progressRef = useRef(0);
   const [, force] = useState(0); // re-render trigger
 
   useEffect(() => {
@@ -24,13 +22,13 @@ export default function Home() {
       if (!el) return 0;
       const rect = el.getBoundingClientRect();
       const viewportH = window.innerHeight;
-      const total = Math.max(el.offsetHeight - viewportH, 1); // total scrollable distance
+      const total = Math.max(el.offsetHeight - viewportH, 1); // total scrollable distance inside section
       const scrolled = Math.min(Math.max(-rect.top, 0), total);
       return scrolled / total; // 0..1
     };
     const onScrollOrResize = () => {
-      targetProgressRef.current = calcProgress();
-      startLoop();
+      progressRef.current = calcProgress();
+      force((v) => v + 1);
     };
     onScrollOrResize();
     window.addEventListener("scroll", onScrollOrResize, { passive: true });
@@ -41,108 +39,34 @@ export default function Home() {
     };
   }, []);
 
-  function startLoop() {
-    if (rafRef.current) return;
-    const tick = () => {
-      const target = targetProgressRef.current;
-      // Inertia: lerp current toward target
-      const alpha = 0.08; // lower = heavier curtain
-      smoothProgressRef.current =
-        smoothProgressRef.current + (target - smoothProgressRef.current) * alpha;
-
-      // Ease-out + slight back near the end for weight
-      const x = smoothProgressRef.current;
-      const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
-      const eased = easeOutCubic(x);
-      const c1 = 1.70158;
-      const c3 = c1 + 1;
-      const back = 1 + c3 * Math.pow(eased - 1, 3) + c1 * Math.pow(eased - 1, 2);
-      const blend = eased < 0.85 ? eased : eased * 0.9 + Math.min(back, 1.03) * 0.1;
-
-      // Trigger a re-render (for transform)
-      force((v) => v + 1);
-
-      const closeEnough = Math.abs(target - smoothProgressRef.current) < 0.001;
-      if (!closeEnough) {
-        rafRef.current = requestAnimationFrame(tick);
-      } else {
-        smoothProgressRef.current = target;
-        rafRef.current = null;
-      }
-    };
-    rafRef.current = requestAnimationFrame(tick);
-  }
-
-  // Compute displayed eased value for transform
-  const displayed = (() => {
-    const x = smoothProgressRef.current;
-    const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
-    const eased = easeOutCubic(x);
-    const c1 = 1.70158;
-    const c3 = c1 + 1;
-    const back = 1 + c3 * Math.pow(eased - 1, 3) + c1 * Math.pow(eased - 1, 2);
-    return eased < 0.85 ? eased : eased * 0.9 + Math.min(back, 1.03) * 0.1;
-  })();
-
-  const curtainOffsetY = -(displayed * vh);
+  // WORD REVEAL: thresholds at 0, 0.25, 0.5, 0.75 of the section progress
+  const thresholds = [0, 0.25, 0.5, 0.75];
+  const words = ["Welcome", "to", "the", "Gala"];
+  const positions = [
+    { x: "10%", y: "10%" },
+    { x: "40%", y: "40%" },
+    { x: "60%", y: "60%" },
+    { x: "90%", y: "90%" }
+  ];
+  // Soft curtain bottom edge via CSS mask
+  const maskStyle: React.CSSProperties = {
+    WebkitMaskImage:
+      "linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 82%, rgba(0,0,0,0) 100%)",
+    maskImage:
+      "linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 82%, rgba(0,0,0,0) 100%)"
+  };
 
   return (
-    <main className="min-h-screen w-full bg-[#efe5cf]">
-      {/* Curtain section: 200vh tall, sticky curtain fills viewport and lifts as you scroll */}
+    <main className="min-h-screen w-full bg-[#efe3c9]">
+      {/* Curtain section: 200vh tall, sticky curtain fills viewport; you never leave the curtain in this phase */}
       <section ref={sectionRef} className="relative h-[200vh]">
         <div className="sticky top-0 h-screen w-full overflow-hidden">
-          {/* Aged parchment below (layered gradients + vignette + noise) */}
-          <div
-            className="absolute inset-0"
-            style={{
-              backgroundImage: [
-                // base parchment tone
-                "linear-gradient(180deg, #efe3c9 0%, #e9d7b8 60%, #dfccad 100%)",
-                // wide uneven stains
-                "radial-gradient(800px 520px at 16% 22%, rgba(78,52,23,0.10), rgba(0,0,0,0) 62%)",
-                "radial-gradient(900px 600px at 82% 34%, rgba(66,44,18,0.08), rgba(0,0,0,0) 64%)",
-                "radial-gradient(640px 420px at 44% 78%, rgba(60,40,15,0.07), rgba(0,0,0,0) 60%)",
-                // subtle vertical streaks (offset to avoid symmetry)
-                "repeating-linear-gradient(92deg, rgba(0,0,0,0.03) 0px, rgba(0,0,0,0.03) 1px, rgba(0,0,0,0) 4px, rgba(0,0,0,0) 9px)",
-                // fine fibers (slightly rotated)
-                "repeating-linear-gradient(1.5deg, rgba(0,0,0,0.02) 0px, rgba(0,0,0,0.02) 1px, rgba(0,0,0,0) 3px, rgba(0,0,0,0) 6px)"
-              ].join(", "),
-              backgroundPosition:
-                "0 0, 10% 8%, 80% 12%, 44% 78%, 0 0, 0 0",
-              backgroundSize:
-                "auto, auto, auto, auto, 120% 100%, 100% 100%",
-              boxShadow:
-                "inset 0 0 180px rgba(0,0,0,0.24), inset 0 0 28px rgba(0,0,0,0.12)"
-            }}
-          />
-          {/* Dual SVG noise overlays with slight rotation/scale to break symmetry */}
-          <svg
-            className="pointer-events-none absolute inset-0 opacity-20 mix-blend-multiply"
-            xmlns="http://www.w3.org/2000/svg"
-            style={{ transform: "rotate(0.6deg) scale(1.02)" }}
-          >
-            <filter id="noiseA">
-              <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="4" stitchTiles="stitch" />
-              <feColorMatrix type="saturate" values="0" />
-            </filter>
-            <rect width="100%" height="100%" filter="url(#noiseA)" />
-          </svg>
-          <svg
-            className="pointer-events-none absolute inset-0 opacity-10 mix-blend-multiply"
-            xmlns="http://www.w3.org/2000/svg"
-            style={{ transform: "rotate(-0.4deg) scale(1.03)" }}
-          >
-            <filter id="noiseB">
-              <feTurbulence type="fractalNoise" baseFrequency="2.2" numOctaves="2" stitchTiles="stitch" />
-              <feColorMatrix type="saturate" values="0" />
-            </filter>
-            <rect width="100%" height="100%" filter="url(#noiseB)" />
-          </svg>
+          {/* NOTE: No parchment here to avoid double background. Only the curtain. */}
 
           {/* Curtain image that translates up with scroll */}
           <div
-            className="absolute inset-0 will-change-transform"
-            style={{ transform: `translateY(${curtainOffsetY}px)` }}
+            className="absolute inset-0"
+            style={maskStyle}
           >
             <div className="absolute inset-0 z-10">
               <Image
@@ -156,7 +80,7 @@ export default function Home() {
             </div>
             {/* Fallback gradient (z-0) only visible while image loads */}
             <div className="absolute inset-0 z-0 bg-gradient-to-b from-[#9d0b0b] via-[#7a0a0a] to-[#2a0000]" />
-            {/* Bottom edge shadow to add weight while lifting */}
+            {/* Feathered bottom + shadow to avoid sharp edge */}
             <div
               className="absolute bottom-0 left-0 right-0 h-32 pointer-events-none z-20"
               style={{
@@ -166,15 +90,77 @@ export default function Home() {
               }}
             />
           </div>
+
+          {/* Word overlay along NW→SE diagonal */}
+          <div className="pointer-events-none absolute inset-0 z-30">
+            {words.map((word, i) => {
+              const start = thresholds[i];
+              // Fade when progress passes the threshold (with a small ramp)
+              const p = progressRef.current;
+              const ramp = 0.12;
+              const t = Math.max(0, Math.min(1, (p - start) / ramp));
+              const scale = 0.92 + 0.08 * t;
+              const pos = positions[i];
+              return (
+                <div
+                  key={word}
+                  className="absolute select-none"
+                  style={{
+                    left: pos.x,
+                    top: pos.y,
+                    transform: `translate(-50%, -50%) scale(${scale})`,
+                    opacity: t,
+                    filter: "drop-shadow(0 10px 16px rgba(0,0,0,0.35))"
+                  }}
+                >
+                  <GoldWord text={word} />
+                </div>
+              );
+            })}
+          </div>
         </div>
       </section>
 
-      {/* Revealed content after curtain fully lifts */}
-      <section className="min-h-screen w-full flex items-center justify-center p-8">
+      {/* Revealed content immediately under the curtain */}
+      <section
+        className="min-h-screen w-full flex items-center justify-center p-8"
+        style={{
+          background:
+            "linear-gradient(180deg, #efe3c9 0%, #ead7b5 60%, #e1cba8 100%)"
+        }}
+      >
         <p className="text-lg sm:text-2xl tracking-wide text-[#1e1a15]">
           the quick brown fox jumped over the lazy dog.
         </p>
       </section>
     </main>
+  );
+}
+
+function GoldWord({ text }: { text: string }) {
+  // Playful metallic yellow via layered gradients clipped to text
+  return (
+    <span
+      className="font-semibold"
+      style={{
+        fontFamily: "ui-rounded, system-ui, Helvetica, Arial, sans-serif",
+        fontSize: "clamp(28px, 6vw, 84px)",
+        lineHeight: 1.05,
+        letterSpacing: "0.5px",
+        color: "transparent",
+        backgroundImage: [
+          "linear-gradient(180deg, #FFE36A 0%, #FFD34A 35%, #FFB200 65%, #E08E00 100%)",
+          "radial-gradient(120% 120% at 20% 10%, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0) 40%)",
+          "radial-gradient(140% 120% at 80% 90%, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0) 60%)"
+        ].join(", "),
+        WebkitBackgroundClip: "text",
+        backgroundClip: "text",
+        // soft inner shadow feel using text-shadow layers
+        textShadow:
+          "0 1px 0 rgba(0,0,0,0.2), 0 3px 8px rgba(0,0,0,0.35), 0 0 18px rgba(255,235,130,0.25)"
+      }}
+    >
+      {text}
+    </span>
   );
 }
