@@ -2,7 +2,6 @@
 "use client";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 
 const Swirl = dynamic(
   () => import("@paper-design/shaders-react").then((m) => m.Swirl),
@@ -10,11 +9,12 @@ const Swirl = dynamic(
 );
 
 export default function Home() {
-  const router = useRouter();
   const [viewport, setViewport] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
   const [speed, setSpeed] = useState<number>(0.4);
   const [isSpinning, setIsSpinning] = useState(false);
   const [fade, setFade] = useState(0); // 0 transparent, 1 white
+  const [showTitle, setShowTitle] = useState(false);
+  const [dockTitle, setDockTitle] = useState(false);
   const prefersReducedMotion = useRef(false);
   const rafRef = useRef<number | null>(null);
 
@@ -76,7 +76,8 @@ export default function Home() {
     if (isSpinning) return;
     if (prefersReducedMotion.current) {
       setFade(1);
-      setTimeout(() => router.push("/blank"), 200);
+      setTimeout(() => setShowTitle(true), 150);
+      setTimeout(() => setDockTitle(true), 1200);
       return;
     }
     setIsSpinning(true);
@@ -93,17 +94,18 @@ export default function Home() {
       if (t < 1) {
         rafRef.current = requestAnimationFrame(tick);
       } else {
-        // brief hold, then fade and navigate
+        // brief hold, then fade to white and show on-page title
         setTimeout(() => {
           setFade(1);
-          setTimeout(() => router.push("/blank"), 250);
+          setTimeout(() => setShowTitle(true), 150);
+          setTimeout(() => setDockTitle(true), 1200);
         }, 150);
         setIsSpinning(false);
         rafRef.current = null;
       }
     };
     rafRef.current = requestAnimationFrame(tick);
-  }, [router, speed, isSpinning]);
+  }, [speed, isSpinning]);
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden">
@@ -130,6 +132,31 @@ export default function Home() {
         className="pointer-events-none absolute inset-0 bg-white transition-opacity duration-300"
         style={{ opacity: fade }}
       />
+
+      {/* On-page title that fades in after white, then docks to top-left */}
+      <div
+        className={[
+          "pointer-events-none absolute z-10 select-none transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]",
+          showTitle ? "opacity-100" : "opacity-0",
+          dockTitle
+            ? "left-10 top-10 translate-x-0 translate-y-0"
+            : "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2",
+        ].join(" ")}
+        aria-hidden="true"
+      >
+        <h1
+          className="font-extrabold"
+          style={{
+            fontFamily: "ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif",
+            fontSize: "clamp(40px, 8vw, 112px)",
+            lineHeight: 1.02,
+            letterSpacing: "0.6px",
+            color: "#000",
+          }}
+        >
+          The Gala
+        </h1>
+      </div>
     </div>
   );
 }
