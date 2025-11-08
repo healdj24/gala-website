@@ -18,6 +18,7 @@ export default function Home() {
   const [streakVisible, setStreakVisible] = useState(false);
   const [streakSolid, setStreakSolid] = useState(false);
   const [dockTitle, setDockTitle] = useState(false);
+  const [triggerActive, setTriggerActive] = useState(false);
   const prefersReducedMotion = useRef(false);
   const rafRef = useRef<number | null>(null);
 
@@ -63,6 +64,7 @@ export default function Home() {
     setStreakVisible(false);
     setStreakSolid(false);
     setDockTitle(false);
+    setTriggerActive(false);
   }, []);
 
   useEffect(() => {
@@ -80,6 +82,7 @@ export default function Home() {
 
   const handleEnter = useCallback(async () => {
     if (isSpinning) return;
+    setTriggerActive(true);
     if (prefersReducedMotion.current) {
       setFade(1);
       setStreakVisible(true);
@@ -128,9 +131,12 @@ export default function Home() {
           type="button"
           aria-label="Enter"
           onClick={() => handleEnter()}
-          className="pointer-events-auto select-none rounded-full bg-white/90 px-8 py-3 text-lg font-medium text-black shadow-xl ring-1 ring-black/10 transition hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+          onPointerDown={() => setTriggerActive(true)}
+          onMouseEnter={() => !isSpinning && setTriggerActive(false)}
+          onFocus={() => !isSpinning && setTriggerActive(false)}
+          className={["pointer-events-auto entry-trigger", triggerActive ? "entry-trigger--active" : ""].join(" ")}
         >
-          Enter
+          <span className="sr-only">Enter</span>
         </button>
       </div>
 
@@ -205,6 +211,59 @@ export default function Home() {
             transform: translate(-50%, -50%) scale(1.12) rotate(540deg);
             filter: blur(8px);
           }
+        }
+        .entry-trigger {
+          position: relative;
+          pointer-events: auto;
+          width: clamp(64px, 12vw, 96px);
+          height: clamp(64px, 12vw, 96px);
+          border-radius: 9999px;
+          background: #040404;
+          display: grid;
+          place-items: center;
+          box-shadow: 0 0 25px rgba(0, 0, 0, 0.35);
+          transition: transform 0.5s cubic-bezier(0.33, 1, 0.68, 1), box-shadow 0.5s;
+          outline: none;
+        }
+        .entry-trigger::after {
+          content: "";
+          position: absolute;
+          inset: 15%;
+          border-radius: inherit;
+          border: 2px solid rgba(255, 255, 255, 0.35);
+          transition: inherit;
+        }
+        .entry-trigger:hover,
+        .entry-trigger:focus-visible {
+          transform: scale(1.2) rotate(-180deg);
+        }
+        .entry-trigger:hover::after,
+        .entry-trigger:focus-visible::after {
+          inset: 10%;
+        }
+        .entry-trigger--active {
+          transform: scale(2) rotate(-540deg);
+          transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .entry-trigger--active::after {
+          inset: 6%;
+        }
+        .entry-trigger:focus-visible {
+          box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.35);
+        }
+        .entry-trigger:focus-visible::after {
+          border-color: rgba(255, 255, 255, 0.6);
+        }
+        .sr-only {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          padding: 0;
+          margin: -1px;
+          overflow: hidden;
+          clip: rect(0, 0, 0, 0);
+          white-space: nowrap;
+          border: 0;
         }
       `}</style>
     </div>
